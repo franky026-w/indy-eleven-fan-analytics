@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>USL Attendance Predictor Tool</title>
+    <style>
+        body { font-family: 'Segoe UI', Arial, sans-serif; background-color: #f0f2f5; display: flex; justify-content: center; padding: 40px; }
+        .card { background: white; padding: 30px; border-radius: 15px; box-shadow: 0 8px 30px rgba(0,0,0,0.1); width: 100%; max-width: 480px; }
+        h2 { color: #1a1a1a; text-align: center; margin-bottom: 25px; border-bottom: 2px solid #eee; padding-bottom: 15px; }
+        .input-group { margin-bottom: 20px; }
+        label { display: block; margin-bottom: 8px; color: #444; font-weight: 600; font-size: 14px; }
+        input, select { width: 100%; padding: 12px; border: 1px solid #ccc; border-radius: 8px; box-sizing: border-box; font-size: 14px; }
+        input:focus, select:focus { border-color: #3498db; outline: none; }
+        button { width: 100%; padding: 15px; background-color: #000; color: white; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; transition: 0.3s; margin-top: 10px; }
+        button:hover { background-color: #333; }
+        #result { margin-top: 25px; padding: 20px; border-radius: 10px; display: none; text-align: center; }
+        .success { background-color: #f8fff9; border: 1px solid #2ecc71; color: #27ae60; }
+        .big-num { font-size: 28px; font-weight: 800; display: block; margin: 10px 0; color: #2c3e50; }
+        .advice { background-color: #fff9e6; border-left: 4px solid #f1c40f; padding: 15px; color: #856404; font-size: 13px; text-align: left; margin-top: 15px; border-radius: 4px; }
+        .footer-note { font-size: 11px; color: #999; text-align: center; margin-top: 20px; }
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <h2>Attendance Predictor</h2>
+    
+    <div class="input-group">
+        <label>Tickets Out (Current Distribution):</label>
+        <input type="number" id="ticketsOut" placeholder="e.g. 9000" value="9000">
+    </div>
+
+    <div class="input-group">
+        <label>Weather Forecast (Rain):</label>
+        <select id="rainLevel">
+            <option value="0">Clear / Sunny / Cloudy (No Rain)</option>
+            <option value="1">Light Rain / Scattered Showers</option>
+            <option value="2">Constant Heavy Rain / Thunderstorms</option>
+        </select>
+    </div>
+
+    <div class="input-group">
+        <label>Forecasted Temperature (°F):</label>
+        <input type="number" id="temp" placeholder="e.g. 72" value="72">
+    </div>
+
+    <div class="input-group">
+        <label>Matchday Theme / Promotion:</label>
+        <select id="isThemed">
+            <option value="0">Standard Matchday</option>
+            <option value="1">High-Impact Theme (317 Night / Star Wars / Fireworks)</option>
+        </select>
+    </div>
+
+    <button onclick="calculate()">Generate Forecast</button>
+
+    <div id="result" class="success">
+        <span style="color: #666; font-size: 14px;">Predicted Scan Rate:</span>
+        <span id="outPct" class="big-num">0%</span>
+        
+        <span style="color: #666; font-size: 14px;">Estimated Fans at Gate:</span>
+        <span id="outNum" class="big-num">0 Fans</span>
+        
+        <div id="tip" class="advice"></div>
+    </div>
+
+    <div class="footer-note">
+        *Based on 2023-2025 USL Championship Regression Model
+    </div>
+</div>
+
+<script>
+    function calculate() {
+        // Get Inputs
+        const ticketsOut = parseFloat(document.getElementById('ticketsOut').value);
+        const rainLevel = parseInt(document.getElementById('rainLevel').value);
+        const temp = parseFloat(document.getElementById('temp').value);
+        const isThemed = parseInt(document.getElementById('isThemed').value);
+
+        // Logic based on Regression Coefficients
+        // Baseline: 39% | Rain: -8.6% per level | Temp: -0.03% per deg deviation from 72F | Theme: +8%
+        let baseline = 0.390;
+        let rainPenalty = rainLevel * 0.086;
+        let tempPenalty = Math.abs(temp - 72) * 0.0003;
+        let themeBonus = isThemed === 1 ? 0.08 : 0;
+
+        let predictedPct = baseline - rainPenalty - tempPenalty + themeBonus;
+        
+        // Boundaries: 5% Min to 65% Max
+        predictedPct = Math.max(0.05, Math.min(0.65, predictedPct));
+        
+        let predictedNum = Math.round(ticketsOut * predictedPct);
+
+        // UI Updates
+        document.getElementById('result').style.display = 'block';
+        document.getElementById('outPct').innerText = (predictedPct * 100).toFixed(1) + '%';
+        document.getElementById('outNum').innerText = predictedNum.toLocaleString();
+
+        // Operational Guidance
+        let tipBox = document.getElementById('tip');
+        let adviceHtml = "<strong>Operational Insight:</strong><br>";
+        
+        if (rainLevel >= 1) {
+            adviceHtml += "High rain risk detected. Expect a drop in walk-up sales. Recommend triggering 'Weather-Proof' mobile alerts to Season Ticket Holders.";
+        } else if (temp > 88) {
+            adviceHtml += "Extreme heat forecasted. Ensure beverage inventory is doubled and hydration stations are prepared.";
+        } else if (isThemed === 1 && rainLevel === 0) {
+            adviceHtml += "Optimal conditions for peak attendance. Staff concessions for a +50% scan rate baseline.";
+        } else {
+            adviceHtml += "Conditions are stable. Proceed with standard staffing protocols.";
+        }
+        
+        tipBox.innerHTML = adviceHtml;
+    }
+</script>
+
+</body>
+</html>
